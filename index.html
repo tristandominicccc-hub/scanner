@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Price Checker</title>
+    <link rel="icon" href="favicon.jpg" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://accounts.google.com/gsi/client">
+    </script>
+    <script src="https://apis.google.com/js/api.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
+    </script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js">
+    </script>
+    <style>
+        /* ---------- All existing styles (unchanged) ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        :root {
+            --bg: #0a0a0f;
+            --card: #1c1c24;
+            --card-hover: #2a2a35;
+            --primary: #0a84ff;
+            --primary-dark: #0066cc;
+            --green: #30d158;
+            --red: #ff453a;
+            --orange: #ff9f0a;
+            --gray: #8e8e93;
+            --gray-light: #3a3a44;
+            --separator: #38383f;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+            --radius: 16px;
+            --radius-lg: 20px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --text: #f2f2f7;
+            --text-secondary: #aeaeb2;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 0 0 80px 0;
+        }
+        .app {
+            max-width: 430px;
+            width: 100%;
+            background: var(--bg);
+            position: relative;
+        }
+        .header {
+            background: rgba(10, 10, 15, 0.92);
+            backdrop-filter: saturate(180%) blur(20px);
+            padding: 14px 20px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 0.5px solid var(--separator);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #5e5ce6, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header h1 i {
+            -webkit-text-fill-color: var(--primary);
+            font-size: 24px;
+        }
+        .header .file-status {
+            font-size: 13px;
+            color: var(--gray);
+            background: var(--gray-light);
+            padding: 4px 14px;
+            border-radius: 30px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .header .file-status.loaded {
+            background: #1a3a2a;
+            color: var(--green);
+        }
+        .header .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--gray);
+        }
+        .header .status-indicator .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .header .status-indicator .dot.online {
+            background: var(--green);
+        }
+        .header .status-indicator .dot.offline {
+            background: var(--red);
+        }
+        .content {
+            padding: 16px 20px 20px;
+            min-height: 60vh;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 0;
+            animation: fadeIn 0.5s ease;
+        }
+        .empty-state .icon {
+            font-size: 64px;
+            color: #3a3a44;
+            margin-bottom: 16px;
+        }
+        .empty-state h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+        .empty-state p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            max-width: 280px;
+            margin: 0 auto 24px;
+            line-height: 1.4;
+        }
+        .empty-state button {
+            padding: 14px 40px;
+            background: var(--primary);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .empty-state button:active {
+            transform: scale(0.96);
+            background: var(--primary-dark);
+        }
+        .loader-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .loader-card.hidden {
+            display: none;
+        }
+        .loader-card select {
+            flex: 2;
+            min-width: 140px;
+            padding: 10px 14px;
+            border: 1px solid var(--separator);
+            border-radius: 12px;
+            font-size: 15px;
+            background: var(--bg);
+            color: var(--text);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238e8e93' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+        .loader-card button {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 6px rgba(10, 132, 255, 0.25);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .loader-card button:active {
+            transform: scale(0.96);
+            background: var(--primary-dark);
+        }
+        .loader-card button.secondary {
+            background: var(--gray-light);
+            color: var(--text);
+            box-shadow: none;
+        }
+        .loader-card button.secondary:active {
+            background: #4a4a55;
+        }
+        .file-indicator {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            background: var(--card);
+            padding: 8px 16px;
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            animation: slideDown 0.3s ease;
+        }
+        .file-indicator.visible {
+            display: flex;
+        }
+        .file-indicator .file-icon {
+            color: var(--red);
+            font-size: 20px;
+        }
+        .file-indicator .file-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+        }
+        .file-indicator .change-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+        .mode-toggle-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: var(--card);
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 18px;
+            box-shadow: var(--shadow);
+        }
+        .mode-toggle-wrap .mode-label {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--gray);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .mode-toggle-wrap .mode-label.active {
+            color: var(--text);
+        }
+        .mode-toggle-wrap .mode-label i {
+            font-size: 16px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 56px;
+            height: 32px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gray-light);
+            transition: var(--transition);
+            border-radius: 32px;
+        }
+        .switch .slider:before {
+            content: "";
+            position: absolute;
+            height: 26px;
+            width: 26px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: var(--transition);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .switch input:checked+.slider {
+            background: var(--green);
+        }
+        .switch input:checked+.slider:before {
+            transform: translateX(24px);
+        }
+        #searchSection {
+            display: none;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-bar .input-wrap {
+            flex: 3;
+            min-width: 160px;
+            position: relative;
+        }
+        .search-bar .input-wrap i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            font-size: 16px;
+        }
+        .search-bar input {
+            width: 100%;
+            padding: 14px 14px 14px 42px;
+            border: 1px solid var(--separator);
+            border-radius: 14px;
+            font-size: 16px;
+            background: var(--card);
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            transition: var(--transition);
+        }
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+        }
+        .search-bar input::placeholder {
+            color: var(--gray);
+        }
+        .search-bar .action-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 14px 0;
+            border: none;
+            border-radius: 14px;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .search-bar .action-btn:active {
+            transform: scale(0.96);
+            background: var(--primary-dark);
+        }
+        .photo-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .photo-panel.active {
+            display: block;
+        }
+        .photo-panel .photo-upload-area {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+            border: 2px dashed var(--separator);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 12px;
+        }
+        .photo-panel .photo-upload-area:active {
+            transform: scale(0.98);
+        }
+        .photo-panel .photo-upload-area i {
+            font-size: 36px;
+            color: var(--gray);
+            margin-bottom: 8px;
+        }
+        .photo-panel .photo-upload-area p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .photo-panel .photo-upload-area input[type="file"] {
+            display: none;
+        }
+        .photo-panel .photo-preview {
+            margin: 12px 0;
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: var(--bg);
+            display: none;
+            max-height: 200px;
+        }
+        .photo-panel .photo-preview img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .photo-panel .photo-preview.visible {
+            display: block;
+        }
+        .photo-panel .photo-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .photo-panel .photo-actions button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 15px;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: var(--transition);
+            flex: 1;
+            min-width: 100px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .photo-panel .photo-actions button:active {
+            transform: scale(0.96);
+            background: var(--primary-dark);
+        }
+        .photo-panel .photo-actions button.secondary {
+            background: var(--gray-light);
+            color: var(--text);
+        }
+        .photo-panel .photo-actions button.secondary:active {
+            background: #4a4a55;
+        }
+        .sheet-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            justify-content: flex-end;
+            align-items: flex-end;
+            animation: fadeIn 0.3s ease;
+        }
+        .sheet-overlay.active {
+            display: flex;
+        }
+        .sheet {
+            max-width: 430px;
+            width: 100%;
+            background: var(--card);
+            border-radius: 24px 24px 0 0;
+            padding: 20px 20px 30px;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+        .sheet .drag-handle {
+            width: 40px;
+            height: 4px;
+            background: var(--separator);
+            border-radius: 4px;
+            margin: 0 auto 16px;
+            cursor: grab;
+        }
+        .sheet .close-sheet {
+            float: right;
+            background: none;
+            border: none;
+            color: var(--gray);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .result-card {
+            border-left: 6px solid var(--green);
+            padding: 4px 0;
+        }
+        .result-card.not-found {
+            border-left-color: var(--red);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 12px;
+        }
+        .status-badge.found {
+            background: #1a3a2a;
+            color: var(--green);
+        }
+        .status-badge.not-found {
+            background: #3a1a1a;
+            color: var(--red);
+        }
+        .result-item {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 0.5px solid var(--separator);
+            align-items: center;
+            gap: 8px;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-label {
+            font-weight: 600;
+            color: var(--gray);
+            width: 90px;
+            flex-shrink: 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .result-label i {
+            width: 20px;
+            color: var(--primary);
+            font-size: 16px;
+        }
+        .result-value {
+            font-weight: 500;
+            color: var(--text);
+            word-break: break-word;
+        }
+        .result-value.barcode {
+            font-family: "Courier New", monospace;
+            background: var(--bg);
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 15px;
+            letter-spacing: 0.5px;
+            color: var(--text);
+        }
+        .result-value.price {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--green);
+        }
+        .result-value.price::before {
+            content: '₱ ';
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .debug-toggle {
+            margin-top: 12px;
+            background: none;
+            border: none;
+            color: var(--gray);
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .debug-snippet {
+            margin-top: 8px;
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border: 1px dashed var(--separator);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 80px;
+            overflow-y: auto;
+            display: none;
+        }
+        .debug-snippet.open {
+            display: block;
+        }
+        .settings-section {
+            padding: 8px 0;
+        }
+        .settings-section .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 0.5px solid var(--separator);
+        }
+        .settings-section .setting-item:last-child {
+            border-bottom: none;
+        }
+        .settings-section .setting-label {
+            font-weight: 500;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .settings-section .setting-label i {
+            color: var(--primary);
+            width: 24px;
+            text-align: center;
+        }
+        .settings-section .setting-action button {
+            background: var(--primary);
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .settings-section .setting-action button:active {
+            transform: scale(0.96);
+            background: var(--primary-dark);
+        }
+        .settings-section .setting-action button.danger {
+            background: var(--red);
+        }
+        .settings-section .setting-action button.danger:active {
+            background: #d63031;
+        }
+        .settings-section .user-email {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .scanner-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        .scanner-overlay.active {
+            display: flex;
+        }
+        .scanner-box {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+        }
+        .scanner-box #reader {
+            width: 100%;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            min-height: 240px;
+        }
+        .scanner-box .close-scanner {
+            margin-top: 16px;
+            background: var(--red);
+            border: none;
+            padding: 12px 0;
+            border-radius: 14px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+        .scanner-box .close-scanner:active {
+            background: #d63031;
+            transform: scale(0.96);
+        }
+        .scanner-box .scanner-status {
+            text-align: center;
+            color: var(--gray);
+            font-size: 14px;
+            padding: 8px 0;
+            margin-top: 8px;
+        }
+
+        /* ---------- Counter page styles ---------- */
+        #counterPage {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        #counterPage.active {
+            display: block;
+        }
+        .counter-form {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+        }
+        .counter-form .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .counter-form .form-row .field {
+            flex: 1;
+            min-width: 100px;
+        }
+        .counter-form .form-row .field label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--gray);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+        .counter-form .form-row .field input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--separator);
+            border-radius: 12px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 15px;
+            transition: var(--transition);
+        }
+        .counter-form .form-row .field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+        }
+        .counter-form .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .counter-form .form-actions button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 80px;
+        }
+        .counter-form .form-actions button:active {
+            transform: scale(0.96);
+        }
+        .counter-form .form-actions .add-btn {
+            background: var(--green);
+            color: white;
+        }
+        .counter-form .form-actions .add-btn:active {
+            background: #28a745;
+        }
+        .counter-form .form-actions .clear-all-btn {
+            background: var(--red);
+            color: white;
+        }
+        .counter-form .form-actions .clear-all-btn:active {
+            background: #d63031;
+        }
+
+        .counter-list-wrap {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 12px 0;
+            box-shadow: var(--shadow);
+            max-height: 320px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+        .counter-list-wrap .list-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 16px 10px 16px;
+            border-bottom: 0.5px solid var(--separator);
+            font-size: 13px;
+            color: var(--gray);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .counter-list-wrap .list-empty {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--gray);
+            font-size: 14px;
+        }
+        .counter-list-wrap .list-empty i {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+            opacity: 0.4;
+        }
+
+        .counter-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 0.5px solid var(--separator);
+            gap: 10px;
+            animation: slideDown 0.2s ease;
+        }
+        .counter-item:last-child {
+            border-bottom: none;
+        }
+        .counter-item .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .counter-item .item-info .item-name {
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+        }
+        .counter-item .item-qty {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            min-width: 36px;
+            text-align: center;
+        }
+        .counter-item .item-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .counter-item .item-actions button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--gray-light);
+            color: var(--text);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .counter-item .item-actions button:active {
+            transform: scale(0.88);
+        }
+        .counter-item .item-actions .edit-btn {
+            background: var(--primary);
+            color: white;
+        }
+        .counter-item .item-actions .edit-btn:active {
+            background: var(--primary-dark);
+        }
+        .counter-item .item-actions .remove-btn {
+            background: var(--red);
+            color: white;
+        }
+        .counter-item .item-actions .remove-btn:active {
+            background: #d63031;
+        }
+
+        .counter-summary {
+            display: flex;
+            gap: 16px;
+            margin-top: 14px;
+            padding: 12px 16px;
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            justify-content: space-around;
+        }
+        .counter-summary .summary-item {
+            text-align: center;
+        }
+        .counter-summary .summary-item .num {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .counter-summary .summary-item .label {
+            font-size: 12px;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        /* ---------- Tab bar ---------- */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 430px;
+            background: rgba(10, 10, 15, 0.92);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-top: 0.5px solid var(--separator);
+            display: flex;
+            justify-content: space-around;
+            padding: 6px 0 10px;
+            z-index: 20;
+        }
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: none;
+            border: none;
+            font-size: 10px;
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 0 12px;
+            font-family: inherit;
+            gap: 2px;
+            flex: 1;
+            position: relative;
+        }
+        .tab-item .tab-icon {
+            font-size: 24px;
+            line-height: 1;
+            transition: var(--transition);
+        }
+        .tab-item .tab-label {
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+        .tab-item.active {
+            color: var(--primary);
+        }
+        .tab-item.active .tab-icon {
+            transform: scale(1.05);
+        }
+        .tab-item:active {
+            opacity: 0.6;
+        }
+        .tab-item.scan-tab .tab-icon {
+            background: var(--primary);
+            color: white;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-top: -16px;
+            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+            transition: var(--transition);
+        }
+        .tab-item.scan-tab:active .tab-icon {
+            transform: scale(0.92);
+        }
+        .tab-item.scan-tab.active .tab-icon {
+            background: var(--primary-dark);
+        }
+        .tab-item.scan-tab .tab-label {
+            margin-top: 2px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 430px) {
+            .content {
+                padding: 12px 16px;
+            }
+            .header {
+                padding: 12px 16px;
+            }
+        }
+        @media (max-width: 380px) {
+            .result-label {
+                width: 70px;
+                font-size: 12px;
+            }
+            .result-value.price {
+                font-size: 26px;
+            }
+            .counter-form .form-row .field {
+                min-width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <h1><i class="fas fa-tag"></i> Price Checker</h1>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span class="file-status" id="fileStatus"><i class="far fa-file"></i> No file</span>
+                <span class="status-indicator" id="statusIndicator">
+                    <span class="dot offline" id="statusDot"></span>
+                    <span id="statusText">Offline</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content" id="mainContent">
+            <!-- EMPTY STATE -->
+            <div class="empty-state" id="emptyState">
+                <div class="icon"><i class="fas fa-receipt"></i></div>
+                <h2>No Product Data</h2>
+                <p>Connect your Google Drive and load a price list to start checking.</p>
+                <button id="emptyConnectBtn"><i class="fab fa-google"></i> Connect Drive</button>
+            </div>
+
+            <!-- LOADER CARD -->
+            <div class="loader-card" id="loaderCard" style="display:none;">
+                <select id="fileSelect"><option>Loading PDFs...</option></select>
+                <button id="downloadBtn"><i class="fas fa-cloud-download-alt"></i> Load</button>
+                <button id="loadStorageBtn" class="secondary"><i class="fas fa-database"></i> Storage</button>
+            </div>
+
+            <!-- FILE INDICATOR -->
+            <div class="file-indicator" id="fileIndicator">
+                <i class="fas fa-file-pdf file-icon"></i>
+                <span class="file-name" id="fileNameDisplay">Products.pdf</span>
+                <button class="change-btn" id="changeFileBtn"><i class="fas fa-pen"></i> Change</button>
+            </div>
+
+            <!-- ===== SEARCH SECTION ===== -->
+            <div id="searchSection" style="display:none;">
+                <div class="mode-toggle-wrap">
+                    <span class="mode-label active" id="liveModeLabel"><i class="fas fa-video"></i> Live</span>
+                    <label class="switch" id="modeSwitch">
+                        <input type="checkbox" id="modeToggleInput">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="mode-label" id="photoModeLabel"><i class="fas fa-image"></i> Photo</span>
+                </div>
+
+                <div class="search-bar" id="livePanel">
+                    <div class="input-wrap">
+                        <i class="fas fa-barcode"></i>
+                        <input type="text" id="barcodeInput" placeholder="Scan or type barcode" />
+                    </div>
+                    <button class="action-btn" id="searchBtn"><i class="fas fa-search"></i> Check</button>
+                </div>
+
+                <div class="photo-panel" id="photoPanel">
+                    <div class="photo-upload-area" id="photoUploadArea">
+                        <i class="fas fa-camera"></i>
+                        <p>Tap to choose a photo<br><small style="color:var(--gray);">(or take a new one)</small></p>
+                        <input type="file" id="photoInput" accept="image/*" capture="environment">
+                    </div>
+                    <div class="photo-preview" id="photoPreview">
+                        <img id="previewImg" alt="Barcode preview">
+                    </div>
+                    <div class="photo-actions">
+                        <button id="scanPhotoBtn"><i class="fas fa-search"></i> Scan Image</button>
+                        <button class="secondary" id="clearPhotoBtn"><i class="fas fa-times"></i> Clear</button>
+                    </div>
+                    <div id="photoStatus" style="margin-top:8px; font-size:13px; color:var(--gray); text-align:center;"></div>
+                </div>
+            </div>
+
+            <!-- ===== COUNTER PAGE ===== -->
+            <div id="counterPage">
+                <div class="counter-form">
+                    <div class="form-row">
+                        <div class="field">
+                            <label>
+                                <span>Product Name</span>
+                                <button id="toggleNameBtn" type="button" style="background: none; border: none; color: var(--gray); font-size: 16px; cursor: pointer; touch-action: manipulation; padding: 4px;">
+                                    <i class="fas fa-eye" id="nameToggleIcon"></i>
+                                </button>
+                            </label>
+                            <input type="text" id="counterName" placeholder="Optional">
+                        </div>
+                        <div class="field">
+                            <label>Quantity</label>
+                            <input type="number" id="counterQty" placeholder="e.g. 5" min="1" step="1">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="add-btn" id="counterAddBtn"><i class="fas fa-plus"></i> Add</button>
+                        <button class="clear-all-btn" id="counterClearAllBtn"><i class="fas fa-trash"></i> Clear All</button>
+                    </div>
+                </div>
+
+                <div class="counter-list-wrap" id="counterListWrap">
+                    <div class="list-header">
+                        <span>Item</span>
+                        <span style="display:flex; gap:16px;">
+                            <span>Qty</span>
+                            <span style="width:60px; text-align:right;">Actions</span>
+                        </span>
+                    </div>
+                    <div class="list-empty" id="counterEmpty">
+                        <i class="fas fa-shopping-basket"></i>
+                        No items yet
+                    </div>
+                    <div id="counterItemsContainer"></div>
+                </div>
+
+                <div class="counter-summary" id="counterSummary" style="display:none;">
+                    <div class="summary-item">
+                        <div class="num" id="totalItemsNum">0</div>
+                        <div class="label">Total Items</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="num" id="totalQtyNum">0</div>
+                        <div class="label">Total Quantity</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM SHEET (Result / Settings) -->
+        <div class="sheet-overlay" id="sheetOverlay">
+            <div class="sheet" id="sheet">
+                <div class="drag-handle"></div>
+                <button class="close-sheet" id="closeSheet"><i class="fas fa-times"></i></button>
+                <div id="sheetContent"></div>
+            </div>
+        </div>
+
+        <!-- CAMERA SCANNER OVERLAY -->
+        <div class="scanner-overlay" id="scannerOverlay">
+            <div class="scanner-box">
+                <div id="reader"></div>
+                <div class="scanner-status" id="scannerStatus">Starting camera...</div>
+                <button class="close-scanner" id="closeScanner"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </div>
+
+        <!-- TAB BAR -->
+        <div class="tab-bar" id="tabBar">
+            <button class="tab-item active" data-tab="search" id="searchTabBtn">
+                <span class="tab-icon" id="searchTabIcon"><i class="fas fa-search"></i></span>
+                <span class="tab-label" id="searchTabLabel">Search</span>
+            </button>
+            <button class="tab-item scan-tab" data-tab="scan">
+                <span class="tab-icon"><i class="fas fa-camera"></i></span>
+                <span class="tab-label">Scan</span>
+            </button>
+            <button class="tab-item" data-tab="counter" id="counterTabBtn">
+                <span class="tab-icon"><i class="fas fa-list-ul"></i></span>
+                <span class="tab-label">Counter</span>
+            </button>
+            <button class="tab-item" data-tab="settings">
+                <span class="tab-icon"><i class="fas fa-cog"></i></span>
+                <span class="tab-label">Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  CONFIGURATION
+        // ============================================================
+        const CLIENT_ID = '296672258875-6kfbnhb9g1f0dhurhvhg0a4pp2pq8hh5.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let tokenClient, accessToken = null;
+        let currentPdfText = '';
+        let currentFileName = '';
+        let userEmail = null;
+        let isSignedIn = false;
+        let html5QrCode = null;
+        let selectedImageFile = null;
+        let isScannerStarting = false;
+
+        const $ = id => document.getElementById(id);
+        const fileStatus = $('fileStatus');
+        const emptyState = $('emptyState');
+        const emptyConnectBtn = $('emptyConnectBtn');
+        const loaderCard = $('loaderCard');
+        const fileSelect = $('fileSelect');
+        const downloadBtn = $('downloadBtn');
+        const loadStorageBtn = $('loadStorageBtn');
+        const fileIndicator = $('fileIndicator');
+        const fileNameDisplay = $('fileNameDisplay');
+        const changeFileBtn = $('changeFileBtn');
+        const searchSection = $('searchSection');
+        const barcodeInput = $('barcodeInput');
+        const searchBtn = $('searchBtn');
+        const sheetOverlay = $('sheetOverlay');
+        const sheetContent = $('sheetContent');
+        const closeSheet = $('closeSheet');
+        const scannerOverlay = $('scannerOverlay');
+        const readerDiv = $('reader');
+        const closeScanner = $('closeScanner');
+        const scannerStatus = $('scannerStatus');
+        const statusDot = $('statusDot');
+        const statusText = $('statusText');
+
+        const modeToggleInput = $('modeToggleInput');
+        const liveModeLabel = $('liveModeLabel');
+        const photoModeLabel = $('photoModeLabel');
+        const livePanel = $('livePanel');
+        const photoPanel = $('photoPanel');
+
+        const photoUploadArea = $('photoUploadArea');
+        const photoInput = $('photoInput');
+        const photoPreview = $('photoPreview');
+        const previewImg = $('previewImg');
+        const scanPhotoBtn = $('scanPhotoBtn');
+        const clearPhotoBtn = $('clearPhotoBtn');
+        const photoStatus = $('photoStatus');
+
+        // Counter elements
+        const counterPage = $('counterPage');
+        const counterName = $('counterName');
+        const counterQty = $('counterQty');
+        const counterAddBtn = $('counterAddBtn');
+        const counterClearAllBtn = $('counterClearAllBtn');
+        const counterItemsContainer = $('counterItemsContainer');
+        const counterEmpty = $('counterEmpty');
+        const counterSummary = $('counterSummary');
+        const totalItemsNum = $('totalItemsNum');
+        const totalQtyNum = $('totalQtyNum');
+
+        // Name toggle elements
+        const toggleNameBtn = $('toggleNameBtn');
+        const nameToggleIcon = $('nameToggleIcon');
+
+        // ============================================================
+        //  LOCAL STORAGE (PDF cache)
+        // ============================================================
+        function saveToStorage(text, name) {
+            try {
+                localStorage.setItem('priceChecker_text', text);
+                localStorage.setItem('priceChecker_name', name);
+            } catch (e) {}
+        }
+
+        function loadFromStorage() {
+            const text = localStorage.getItem('priceChecker_text');
+            const name = localStorage.getItem('priceChecker_name');
+            if (text && name) {
+                currentPdfText = text;
+                currentFileName = name;
+                updateUIAfterLoad(name);
+                return true;
+            }
+            return false;
+        }
+
+        function updateUIAfterLoad(name) {
+            fileStatus.textContent = name;
+            fileStatus.classList.add('loaded');
+            emptyState.style.display = 'none';
+            loaderCard.classList.add('hidden');
+            fileIndicator.classList.add('visible');
+            fileNameDisplay.textContent = name;
+            searchSection.style.display = 'block';
+            sheetOverlay.classList.remove('active');
+            applyMode();
+        }
+
+        function showEmptyState() {
+            emptyState.style.display = 'block';
+            loaderCard.style.display = 'none';
+            fileIndicator.classList.remove('visible');
+            searchSection.style.display = 'none';
+            fileStatus.textContent = 'No file';
+            fileStatus.classList.remove('loaded');
+        }
+
+        function showLoaderCard() {
+            loaderCard.style.display = 'flex';
+            loaderCard.classList.remove('hidden');
+            fileIndicator.classList.remove('visible');
+            searchSection.style.display = 'none';
+        }
+
+        // ============================================================
+        //  MODE TOGGLE
+        // ============================================================
+        function applyMode() {
+            const isPhoto = modeToggleInput.checked;
+            if (isPhoto) {
+                livePanel.style.display = 'none';
+                photoPanel.classList.add('active');
+                liveModeLabel.classList.remove('active');
+                photoModeLabel.classList.add('active');
+                photoInput.click();
+            } else {
+                livePanel.style.display = 'flex';
+                photoPanel.classList.remove('active');
+                liveModeLabel.classList.add('active');
+                photoModeLabel.classList.remove('active');
+                barcodeInput.focus();
+            }
+        }
+
+        modeToggleInput.addEventListener('change', applyMode);
+
+        liveModeLabel.addEventListener('click', function() {
+            if (modeToggleInput.checked) {
+                modeToggleInput.checked = false;
+                applyMode();
+            }
+        });
+        photoModeLabel.addEventListener('click', function() {
+            if (!modeToggleInput.checked) {
+                modeToggleInput.checked = true;
+                applyMode();
+            }
+        });
+
+        // ============================================================
+        //  GOOGLE AUTH & DRIVE
+        // ============================================================
+        function initGapi() {
+            gapi.load('client', async function() {
+                await gapi.client.init({
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+                });
+            });
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: function(resp) {
+                    if (resp.error) {
+                        setStatus(false, 'Auth error');
+                        return;
+                    }
+                    accessToken = resp.access_token;
+                    if (resp.id_token) {
+                        try {
+                            var payload = JSON.parse(atob(resp.id_token.split('.')[1]));
+                            userEmail = payload.email;
+                        } catch (e) {}
+                    }
+                    isSignedIn = true;
+                    setStatus(true, userEmail || 'Online');
+                    try {
+                        localStorage.setItem('priceChecker_token', accessToken);
+                        localStorage.setItem('priceChecker_email', userEmail || '');
+                    } catch (e) {}
+                    emptyState.style.display = 'none';
+                    showLoaderCard();
+                    if (!loadFromStorage()) {
+                        loadFileList();
+                    } else {
+                        loadFileList();
+                    }
+                    sheetOverlay.classList.remove('active');
+                }
+            });
+
+            var savedToken = localStorage.getItem('priceChecker_token');
+            if (savedToken) {
+                tokenClient.requestAccessToken({ prompt: 'none' });
+            } else {
+                setStatus(false, 'Offline');
+            }
+        }
+
+        function signIn() {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        }
+
+        function disconnect() {
+            if (accessToken) {
+                google.accounts.oauth2.revoke(accessToken, function() {});
+            }
+            accessToken = null;
+            userEmail = null;
+            isSignedIn = false;
+            localStorage.removeItem('priceChecker_token');
+            localStorage.removeItem('priceChecker_email');
+            setStatus(false, 'Offline');
+            showEmptyState();
+        }
+
+        emptyConnectBtn.addEventListener('click', signIn);
+
+        async function loadFileList() {
+            fileSelect.innerHTML = '<option>Loading...</option>';
+            try {
+                var res = await gapi.client.drive.files.list({
+                    pageSize: 30,
+                    fields: 'files(id, name, mimeType)',
+                    q: "mimeType='application/pdf' and trashed=false"
+                });
+                var files = res.result.files;
+                fileSelect.innerHTML = '';
+                if (!files || files.length === 0) {
+                    fileSelect.innerHTML = '<option>No PDFs found</option>';
+                    return;
+                }
+                files.forEach(function(f) {
+                    var opt = document.createElement('option');
+                    opt.value = f.id;
+                    opt.textContent = f.name;
+                    fileSelect.appendChild(opt);
+                });
+            } catch (err) {
+                fileSelect.innerHTML = '<option>Error</option>';
+            }
+        }
+
+        downloadBtn.addEventListener('click', async function() {
+            var fileId = fileSelect.value;
+            if (!fileId || fileId === 'No PDFs found' || fileId === 'Error') {
+                return;
+            }
+            var fileName = fileSelect.options[fileSelect.selectedIndex].text;
+            fileStatus.textContent = 'Loading...';
+
+            try {
+                var response = await fetch(
+                    'https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    }
+                );
+                if (!response.ok) throw new Error('Download failed');
+                var arrayBuffer = await response.arrayBuffer();
+
+                var pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                var fullText = '';
+                for (var i = 1; i <= pdf.numPages; i++) {
+                    var page = await pdf.getPage(i);
+                    var textContent = await page.getTextContent();
+                    var pageText = textContent.items.map(function(item) { return item.str; }).join(' ');
+                    fullText += pageText + '\n';
+                }
+                currentPdfText = fullText;
+                currentFileName = fileName;
+                saveToStorage(fullText, fileName);
+                updateUIAfterLoad(fileName);
+            } catch (err) {
+                fileStatus.textContent = 'Error';
+            }
+        });
+
+        loadStorageBtn.addEventListener('click', function() {
+            loadFromStorage();
+        });
+
+        changeFileBtn.addEventListener('click', function() {
+            showLoaderCard();
+            loadFileList();
+        });
+
+        function setStatus(online, text) {
+            statusDot.className = 'dot ' + (online ? 'online' : 'offline');
+            statusText.textContent = text || (online ? 'Online' : 'Offline');
+        }
+
+        // ============================================================
+        //  LOOKUP FUNCTIONS (reused from search)
+        // ============================================================
+        function cleanProductName(raw) {
+            if (!raw) return '';
+            var tokens = raw.split(/\s+/);
+            var filtered = tokens.filter(function(token) {
+                if (/^[\d,]+\.?[\d]*$/.test(token)) return false;
+                var unit = token.replace(/[.,]/g, '').toUpperCase();
+                if (['PC', 'EA', 'PK', 'CTN', 'BOX', 'DOZ', 'SET', 'PACK', 'CASE', 'UNIT'].indexOf(unit) !== -1) return false;
+                if (/^[^\w]+$/.test(token)) return false;
+                return true;
+            });
+            var cleaned = filtered.join(' ');
+            cleaned = cleaned.replace(/[–—\-]\s*$/, '').trim();
+            return cleaned;
+        }
+
+        function extractFromDecimal(fullText, idx, barcode) {
+            var beforeText = fullText.substring(0, idx);
+            var barcodeRegex = /\b\d{13}\b/g;
+            var match, prevBarcodeEnd = -1;
+            while ((match = barcodeRegex.exec(beforeText)) !== null) {
+                prevBarcodeEnd = match.index + match[0].length;
+            }
+            var productStart = 0;
+            if (prevBarcodeEnd !== -1) productStart = prevBarcodeEnd;
+            var lastNewline = fullText.lastIndexOf('\n', idx);
+            if (lastNewline > productStart) productStart = lastNewline + 1;
+
+            var rawName = fullText.substring(productStart, idx).trim();
+            rawName = rawName.replace(/[–—\-]\s*$/, '').trim();
+            var productName = cleanProductName(rawName);
+            if (!productName) productName = 'Item ' + barcode;
+
+            var afterText = fullText.substring(idx + barcode.length, idx + barcode.length + 200);
+            var decimalNumbers = afterText.match(/(\d{1,3}(?:,\d{3})*(?:\.\d{2})|\d+\.\d{2})/g);
+            var price = 'N/A';
+            if (decimalNumbers && decimalNumbers.length >= 2) {
+                price = decimalNumbers[1];
+            } else if (decimalNumbers && decimalNumbers.length === 1) {
+                price = decimalNumbers[0];
+            }
+            if (price !== 'N/A') {
+                price = price.replace(/,/g, '');
+            }
+
+            return { found: true, barcode: barcode, name: productName, price: price, fullText: fullText, idx: idx };
+        }
+
+        function lookupBarcodeInPdf(barcode) {
+            if (!currentPdfText || !barcode) return null;
+            var fullText = currentPdfText;
+            var idx = fullText.indexOf(barcode);
+            if (idx === -1) return { found: false, barcode: barcode };
+
+            var lineStart = fullText.lastIndexOf('\n', idx) + 1;
+            var lineEnd = fullText.indexOf('\n', idx);
+            var line = fullText.substring(lineStart, lineEnd === -1 ? fullText.length : lineEnd).trim();
+
+            var productName = '';
+            var price = 'N/A';
+
+            if (line.indexOf('|') !== -1) {
+                var parts = line.split('|').map(function(s) { return s.trim(); });
+                var barcodeIndex = -1;
+                for (var j = 0; j < parts.length; j++) {
+                    if (parts[j] === barcode) {
+                        barcodeIndex = j;
+                        break;
+                    }
+                }
+                if (barcodeIndex !== -1) {
+                    var priceIndex = barcodeIndex + 3;
+                    if (priceIndex < parts.length) {
+                        price = parts[priceIndex] || 'N/A';
+                    }
+                    if (parts.length > 0 && parts[0] !== barcode) {
+                        productName = parts[0];
+                    } else if (parts.length > 1) {
+                        productName = parts[1];
+                    }
+                } else {
+                    return extractFromDecimal(fullText, idx, barcode);
+                }
+            } else {
+                return extractFromDecimal(fullText, idx, barcode);
+            }
+
+            if (!productName) productName = 'Item ' + barcode;
+            productName = productName.replace(/[–—\-]\s*$/, '').trim();
+
+            return { found: true, barcode: barcode, name: productName, price: price, fullText: fullText, idx: idx };
+        }
+
+        // ============================================================
+        //  SEARCH BARCODE
+        // ============================================================
+        function searchBarcode(barcode) {
+            if (!barcode) return;
+            if (!currentPdfText) {
+                sheetContent.innerHTML = '<p style="color:var(--gray);">No PDF loaded. Please load a price list first.</p>';
+                sheetOverlay.classList.add('active');
+                return;
+            }
+
+            var result = lookupBarcodeInPdf(barcode);
+            var html = '';
+
+            if (!result || !result.found) {
+                html = `
+                    <div class="result-card not-found">
+                        <div class="status-badge not-found"><i class="fas fa-times-circle"></i> Not Found</div>
+                        <p style="color:var(--text-secondary);">Barcode <strong>${escapeHtml(barcode)}</strong> not in this PDF.</p>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="result-card">
+                        <div class="status-badge found"><i class="fas fa-check-circle"></i> Found</div>
+                        <div class="result-item">
+                            <span class="result-label"><i class="fas fa-box"></i> Product</span>
+                            <span class="result-value">${escapeHtml(result.name)}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label"><i class="fas fa-barcode"></i> Barcode</span>
+                            <span class="result-value barcode">${escapeHtml(result.barcode)}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label"><i class="fas fa-tag"></i> Unit Price</span>
+                            <span class="result-value price">${escapeHtml(result.price)}</span>
+                        </div>
+                        <button class="debug-toggle" id="debugToggle"><i class="fas fa-chevron-down"></i> Show context</button>
+                        <div class="debug-snippet" id="debugSnippet">
+                            ...${escapeHtml(currentPdfText.substring(Math.max(0, result.idx-20), result.idx))}<mark style="background:#ffd60a; color:#000;">${escapeHtml(result.barcode)}</mark>${escapeHtml(currentPdfText.substring(result.idx + result.barcode.length, Math.min(currentPdfText.length, result.idx + result.barcode.length + 80)))}...
+                        </div>
+                    </div>
+                `;
+            }
+
+            sheetContent.innerHTML = html;
+            sheetOverlay.classList.add('active');
+
+            var toggle = document.getElementById('debugToggle');
+            var snippet = document.getElementById('debugSnippet');
+            if (toggle && snippet) {
+                toggle.addEventListener('click', function() {
+                    snippet.classList.toggle('open');
+                    toggle.innerHTML = snippet.classList.contains('open') ?
+                        '<i class="fas fa-chevron-up"></i> Hide context' :
+                        '<i class="fas fa-chevron-down"></i> Show context';
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================================
+        //  SEARCH EVENTS
+        // ============================================================
+        searchBtn.addEventListener('click', function() {
+            var barcode = barcodeInput.value.trim();
+            searchBarcode(barcode);
+        });
+
+        barcodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchBtn.click();
+        });
+
+        // ============================================================
+        //  PHOTO SCANNER
+        // ============================================================
+        photoUploadArea.addEventListener('click', function() {
+            photoInput.click();
+        });
+
+        photoInput.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            selectedImageFile = file;
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                previewImg.src = ev.target.result;
+                photoPreview.classList.add('visible');
+                photoStatus.textContent = 'Image loaded. Tap "Scan Image" to decode.';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        scanPhotoBtn.addEventListener('click', async function() {
+            if (!selectedImageFile) {
+                photoStatus.textContent = 'Please choose an image first.';
+                return;
+            }
+            photoStatus.textContent = 'Scanning image...';
+            var hiddenDiv = document.createElement('div');
+            hiddenDiv.id = 'tempScanner';
+            hiddenDiv.style.display = 'none';
+            document.body.appendChild(hiddenDiv);
+
+            try {
+                var scanner = new Html5Qrcode('tempScanner');
+                var decodedText = await scanner.scanFile(selectedImageFile, true);
+                document.body.removeChild(hiddenDiv);
+                if (decodedText) {
+                    photoStatus.textContent = 'Barcode detected!';
+                    barcodeInput.value = decodedText;
+                    searchBarcode(decodedText);
+                } else {
+                    photoStatus.textContent = 'No barcode found. Try a clearer photo.';
+                }
+            } catch (err) {
+                document.body.removeChild(hiddenDiv);
+                photoStatus.textContent = 'Error: ' + (err.message || err || 'unknown');
+                console.error(err);
+            }
+        });
+
+        clearPhotoBtn.addEventListener('click', function() {
+            selectedImageFile = null;
+            photoInput.value = '';
+            photoPreview.classList.remove('visible');
+            previewImg.src = '';
+            photoStatus.textContent = '';
+        });
+
+        // ============================================================
+        //  IOS HELPER: get best back camera (avoid ultra-wide)
+        // ============================================================
+        async function getBestBackCamera() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoInputs = devices.filter(d => d.kind === 'videoinput');
+                // Prefer a camera labelled "back" but NOT "ultra"
+                let back = videoInputs.find(d => 
+                    d.label.toLowerCase().includes('back') && 
+                    !d.label.toLowerCase().includes('ultra')
+                );
+                // If none, fallback to any 'back' or 'environment'
+                if (!back) {
+                    back = videoInputs.find(d => 
+                        d.label.toLowerCase().includes('back') || 
+                        d.label.toLowerCase().includes('environment')
+                    );
+                }
+                // If still none, return first video input
+                return back ? back.deviceId : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ============================================================
+        //  LIVE CAMERA SCANNER (iOS-optimized)
+        // ============================================================
+        async function startLiveScanner() {
+            if (isScannerStarting || scannerOverlay.classList.contains('active')) return;
+            isScannerStarting = true;
+            scannerStatus.textContent = 'Starting camera...';
+            scannerOverlay.classList.add('active');
+
+            // Clean up previous instance
+            if (html5QrCode) {
+                try { await html5QrCode.stop(); } catch(e) {}
+                html5QrCode.clear();
+                html5QrCode = null;
+            }
+
+            html5QrCode = new Html5Qrcode("reader");
+
+            // Detect iOS
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            // iOS-specific config
+            let config = {
+                fps: 10,
+                qrbox: { width: 240, height: 240 },
+                aspectRatio: 1.0,
+            };
+
+            let constraints = {};
+            if (isIOS) {
+                // 1. Disable native BarcodeDetector
+                config.experimentalFeatures = {
+                    useBarCodeDetectorIfSupported: false
+                };
+                // 2. Try to get a good back camera
+                const deviceId = await getBestBackCamera();
+                if (deviceId) {
+                    constraints = { deviceId: { exact: deviceId } };
+                } else {
+                    // fallback to environment (might use ultra‑wide, but better than nothing)
+                    constraints = { facingMode: "environment" };
+                }
+                // 3. Lower fps to improve focus stability
+                config.fps = 8;
+            } else {
+                // Android / other: use environment mode
+                constraints = { facingMode: "environment" };
+            }
+
+            html5QrCode.start(
+                constraints,
+                config,
+                function(decodedText) {
+                    barcodeInput.value = decodedText;
+                    stopLiveScanner();
+                    searchBarcode(decodedText);
+                },
+                function(err) {} // ignore errors
+            ).then(function() {
+                scannerStatus.textContent = 'Point at barcode';
+                isScannerStarting = false;
+            }).catch(function(err) {
+                scannerStatus.textContent = 'Camera error – try using Photo mode';
+                isScannerStarting = false;
+                console.warn(err);
+            });
+        }
+
+        function stopLiveScanner() {
+            scannerOverlay.classList.remove('active');
+            if (html5QrCode) {
+                html5QrCode.stop().then(function() {
+                    html5QrCode.clear();
+                    html5QrCode = null;
+                }).catch(function() {
+                    html5QrCode = null;
+                });
+            }
+            isScannerStarting = false;
+        }
+
+        closeScanner.addEventListener('click', stopLiveScanner);
+
+        // ============================================================
+        //  COUNTER FUNCTIONALITY (no quantity limit)
+        // ============================================================
+
+        // Name toggle state
+        let isNameVisible = true;
+
+        if (toggleNameBtn) {
+            toggleNameBtn.addEventListener('click', function() {
+                isNameVisible = !isNameVisible;
+                if (isNameVisible) {
+                    counterName.style.display = 'block';
+                    nameToggleIcon.className = 'fas fa-eye';
+                } else {
+                    counterName.style.display = 'none';
+                    nameToggleIcon.className = 'fas fa-eye-slash';
+                }
+            });
+        }
+
+        let counterItems = [];
+
+        function loadCounterItems() {
+            try {
+                const stored = localStorage.getItem('priceChecker_counter');
+                if (stored) {
+                    counterItems = JSON.parse(stored);
+                } else {
+                    counterItems = [];
+                }
+            } catch (e) {
+                counterItems = [];
+            }
+            renderCounterList();
+        }
+
+        function saveCounterItems() {
+            try {
+                localStorage.setItem('priceChecker_counter', JSON.stringify(counterItems));
+            } catch (e) {}
+        }
+
+        function renderCounterList() {
+            const container = counterItemsContainer;
+            if (counterItems.length === 0) {
+                counterEmpty.style.display = 'block';
+                container.innerHTML = '';
+                counterSummary.style.display = 'none';
+                return;
+            }
+            counterEmpty.style.display = 'none';
+
+            let html = '';
+            let totalQty = 0;
+            counterItems.forEach(function(item, index) {
+                totalQty += item.quantity;
+                html += `
+                    <div class="counter-item" data-index="${index}">
+                        <div class="item-info">
+                            <div class="item-name">${escapeHtml(item.name)}</div>
+                        </div>
+                        <div class="item-qty">${item.quantity}</div>
+                        <div class="item-actions">
+                            <button class="edit-btn" data-index="${index}"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="remove-btn" data-index="${index}"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+
+            container.querySelectorAll('.edit-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const currentQty = counterItems[idx].quantity;
+                    const newQty = prompt('Edit quantity for "' + counterItems[idx].name + '":', currentQty);
+                    if (newQty !== null) {
+                        const qty = parseInt(newQty);
+                        if (!isNaN(qty) && qty > 0) {
+                            counterItems[idx].quantity = qty;
+                            saveCounterItems();
+                            renderCounterList();
+                        } else {
+                            alert('Please enter a valid number greater than 0.');
+                        }
+                    }
+                });
+            });
+
+            container.querySelectorAll('.remove-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    counterItems.splice(idx, 1);
+                    saveCounterItems();
+                    renderCounterList();
+                });
+            });
+
+            totalItemsNum.textContent = counterItems.length;
+            totalQtyNum.textContent = totalQty;
+            counterSummary.style.display = 'flex';
+        }
+
+        function addCounterItem() {
+            const name = counterName.value.trim() || 'Item';
+            let qty = parseInt(counterQty.value);
+            if (isNaN(qty) || qty < 1) qty = 1;
+
+            counterItems.push({
+                name: name,
+                quantity: qty
+            });
+            saveCounterItems();
+            renderCounterList();
+
+            counterName.value = '';
+            counterQty.value = '';
+            counterName.focus();
+        }
+
+        function clearAllItems() {
+            if (counterItems.length === 0) return;
+            if (confirm('Clear all items from counter?')) {
+                counterItems = [];
+                saveCounterItems();
+                renderCounterList();
+            }
+        }
+
+        counterAddBtn.addEventListener('click', addCounterItem);
+        counterClearAllBtn.addEventListener('click', clearAllItems);
+
+        counterName.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCounterItem(); });
+        counterQty.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCounterItem(); });
+
+        loadCounterItems();
+
+        // ============================================================
+        //  TAB BAR NAVIGATION
+        // ============================================================
+        function showPage(pageId) {
+            searchSection.style.display = 'none';
+            counterPage.classList.remove('active');
+            sheetOverlay.classList.remove('active');
+            if (pageId === 'search') {
+                searchSection.style.display = 'block';
+                if (modeToggleInput.checked) {
+                    photoInput.click();
+                } else {
+                    barcodeInput.focus();
+                }
+            } else if (pageId === 'counter') {
+                counterPage.classList.add('active');
+                setTimeout(function() { counterName.focus(); }, 100);
+            }
+        }
+
+        document.querySelectorAll('.tab-item').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                var action = tab.dataset.tab;
+                if (action === 'scan') {
+                    if (!scannerOverlay.classList.contains('active')) startLiveScanner();
+                } else if (action === 'search') {
+                    showPage('search');
+                } else if (action === 'counter') {
+                    showPage('counter');
+                } else if (action === 'settings') {
+                    openSettings();
+                }
+            });
+        });
+
+        // ============================================================
+        //  SETTINGS
+        // ============================================================
+        function openSettings() {
+            var html = `
+                <div class="settings-section">
+                    <h3 style="font-size:18px; font-weight:600; margin-bottom:12px; color:var(--text);"><i class="fas fa-cog"></i> Settings</h3>
+                    <div style="margin-bottom:16px;">
+                        <h4 style="font-size:15px; font-weight:600; color:var(--gray); margin-bottom:8px;">Account</h4>
+                        <div class="setting-item">
+                            <span class="setting-label"><i class="fas fa-user"></i> Status</span>
+                            <div class="setting-action">
+                                ${isSignedIn ? '<span class="user-email">' + (userEmail || 'Connected') + '</span>' : '<span style="color:var(--gray);">Not signed in</span>'}
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label"><i class="fas fa-plug"></i> Google Drive</span>
+                            <div class="setting-action">
+                                ${isSignedIn ?
+                                    '<button class="danger" id="disconnectBtn"><i class="fas fa-sign-out-alt"></i> Disconnect</button>' :
+                                    '<button id="settingsConnectBtn"><i class="fab fa-google"></i> Connect</button>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="font-size:15px; font-weight:600; color:var(--gray); margin-bottom:8px;">Data</h4>
+                        <div class="setting-item">
+                            <span class="setting-label"><i class="fas fa-database"></i> Cached PDF</span>
+                            <div class="setting-action">
+                                ${currentFileName ? '<span style="color:var(--gray);">' + currentFileName + '</span>' : '<span style="color:var(--gray);">None</span>'}
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label"><i class="fas fa-trash-alt"></i> Clear Storage</span>
+                            <div class="setting-action">
+                                <button class="danger" id="clearStorageBtn"><i class="fas fa-eraser"></i> Clear</button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label"><i class="fas fa-list-ul"></i> Counter Items</span>
+                            <div class="setting-action">
+                                <span style="color:var(--gray);">${counterItems.length} items</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            sheetContent.innerHTML = html;
+            sheetOverlay.classList.add('active');
+
+            var connectBtn = document.getElementById('settingsConnectBtn');
+            if (connectBtn) connectBtn.addEventListener('click', signIn);
+
+            var disconnectBtn = document.getElementById('disconnectBtn');
+            if (disconnectBtn) disconnectBtn.addEventListener('click', function() {
+                disconnect();
+                openSettings();
+            });
+
+            var clearBtn = document.getElementById('clearStorageBtn');
+            if (clearBtn) clearBtn.addEventListener('click', function() {
+                localStorage.removeItem('priceChecker_text');
+                localStorage.removeItem('priceChecker_name');
+                currentPdfText = '';
+                currentFileName = '';
+                showEmptyState();
+                openSettings();
+            });
+        }
+
+        // ============================================================
+        //  BOTTOM SHEET
+        // ============================================================
+        closeSheet.addEventListener('click', function() {
+            sheetOverlay.classList.remove('active');
+        });
+        sheetOverlay.addEventListener('click', function(e) {
+            if (e.target === sheetOverlay) sheetOverlay.classList.remove('active');
+        });
+
+        // ============================================================
+        //  INIT
+        // ============================================================
+        if (loadFromStorage()) {
+            emptyState.style.display = 'none';
+            loaderCard.style.display = 'none';
+            fileIndicator.classList.add('visible');
+            searchSection.style.display = 'block';
+            fileStatus.textContent = currentFileName + ' (cached)';
+            fileStatus.classList.add('loaded');
+            fileNameDisplay.textContent = currentFileName;
+            applyMode();
+            showPage('search');
+            document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelector('[data-tab="search"]').classList.add('active');
+        } else {
+            showEmptyState();
+            showPage('search');
+            document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelector('[data-tab="search"]').classList.add('active');
+        }
+
+        initGapi();
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                if (counterPage.classList.contains('active')) {
+                    counterName.focus();
+                } else {
+                    barcodeInput.focus();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
